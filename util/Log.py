@@ -1,12 +1,13 @@
 import logging
+import os
+import logging.config
 
 
 class Log:
 
-    def __init__(self, pid, *tag):
-        self.PID = pid
+    def __init__(self, *tag):
+        self.PID = os.getpid()
         self.TAG = tag[0]
-        self
         self.logger = self.get_logger()
 
     def set_tag(self, tag):
@@ -35,10 +36,14 @@ class Log:
         formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
         console.setFormatter(formatter)
         log = logging.getLogger(self.TAG)
-        log.addHandler(console)
+        # log.addHandler(console)
         return log
+
+    @staticmethod
+    def logger():
+        return
 
 
 if __name__ == '__main__':
-    logger = Log(1, __name__)
+    logger = Log(__name__)
     logger.i("start")
