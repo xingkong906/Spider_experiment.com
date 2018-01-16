@@ -6,8 +6,6 @@ from dao.Dao import Dao
 
 home_page = r"https://experiment.com"
 url = r'https://experiment.com/discover/more'
-req = requests.get(url, params={'offset': '12', 'order': 'founded'})
-html = json.loads(req.text)
 
 
 # con = sqlite3.connect("../data/experiment.db")
@@ -31,23 +29,37 @@ def get(text):
         status = footer.find('div', attrs={'class', 'row stats-row'})
         rs['funding_percent'] = to_int(h4_founding(status.select("#funding-percent")[0].h4)) / 100
         rs['funding_goal'] = to_int(h4_goal(status.select("#funding-goal")[0].h4))
-        rs['count_lab_notes'] = to_int(h41(status.find('div', attrs={'id': 'time-remaining'})))
-    print(rs)
+        rs['count_lab_notes'] = to_int(h4_founding(status.select(".time-remaining")[0].h4))
+    return [rs, researcher]
 
 
 def h4_founding(text):
     text = str(text)
-    match = re.match(r'<h4>(.*)?%<b', text)
+    match = re.match(r'<h4>(.*)?.*<b', text)
     return str(match.group(1))
 
 
 def h4_goal(text):
     text = str(text)
-    pattern = re.compile(u'>\$(.*)?<')
-    match = re.match('>\$(.*)?<', text)
+    pattern = re.compile(r'>\$(.*?)<')
+    match = pattern.search(text)
     return str(match.group(1))
 
 
+def do():
+    dao_project = Dao('project')
+    dao_researchers = Dao('researchers')
+    for i in range(1, 128):
+        req = requests.get(url, params={'offset': '12', 'order': 'founded'})
+        html = json.loads(req.text)['cards']
+        project, researcher = get(html)
+        dao_project.se
+
+
 if __name__ == '__main__':
-    html = open('../data/project.html', 'r').read()
+    # html = open('../data/project.html', 'r').read()
+    url = r'https://experiment.com/discover/more'
+    req = requests.get(url, params={'offset': '762', 'order': 'founded'})
+    html = json.loads(req.text)['cards']
+    print(html)
     get(html)
