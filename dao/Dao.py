@@ -15,15 +15,15 @@ class Dao(object):
         :param table_name: 表名
         :param args: 数据字典
         """
-        self.cursor = self.con.cursor()
         self.item['table'] = args['table']
-        self.item['data'] = args['data']
+        if 'data' in args.keys():
+            self.item['data'] = args['data']
         self.con = self.get_con()
         self.cursor = self.con.cursor()
 
-    def __init__(self, table, data):
-        self.item['table'] = table
-        self.item['data'] = data
+    # def __init__(self, table, data):
+    #     self.item['table'] = table
+    #     self.item['data'] = data
 
     def __setitem__(self, key, value):
         if key == "con":
