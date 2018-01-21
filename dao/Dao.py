@@ -1,5 +1,6 @@
 import sqlite3
 from util.Log import Log
+import json
 
 logger = Log(__name__)
 
@@ -15,9 +16,11 @@ class Dao(object):
         :param table_name: 表名
         :param args: 数据字典
         """
-        self.item['table'] = args['table']
-        if 'data' in args.keys():
-            self.item['data'] = args['data']
+        for key in args.keys():
+            self.__setitem__(key=key, value=args[key])
+        # self.item['table'] = args['table']
+        # if 'data' in args.keys():
+        #     self.item['data'] = args['data']
         self.con = self.get_con()
         self.cursor = self.con.cursor()
 
@@ -39,14 +42,24 @@ class Dao(object):
     def get_con():
         return sqlite3.connect("../data/experiment.db")
 
+    def open_data_base(self):
+        try:
+            self.con.pi
+        except Exception as e:
+            logger.e("数据库连接出现问题，正在重新创建连接")
+            self.con = self.get_con()
+            self.cursor = self.con.cursor()
+
     def insert(self):
         if self.con is None:
             self.con = Dao.get_con()
             self.cursor = self.con.cursor()
+        if 'id' in self.item.keys():
+            self.item['data']['project_id'] = self.item['id']
         col = " ,".join(self.item['data'].keys())
         row = ",".join(len(self.item['data']) * "?")
         sql = "INSERT INTO %s (%s) VALUES (%s)" % (self.item['table'], col, row)
-        print(sql)
+        logger.d(sql)
         try:
             self.cursor.execute(sql, list(self.item['data'].values()))
             self.con.commit()
@@ -55,6 +68,15 @@ class Dao(object):
             print("已存在，不可插入")
             logger.e(e)
         logger.i("执行插入成功")
+
+    def insert_dict_list(self, **kwargs):
+        # 遍历列表中的元素进行插入，每一个元素为一个字典json字符串
+        if "table" in kwargs.keys():
+            self.item['table'] = kwargs['table']
+        for cell in kwargs['data']:
+            print(cell)
+            self.item['data'] = cell
+            self.insert()
 
     def select(self, key, data):
         if self.con is None:
@@ -103,11 +125,13 @@ class Dao(object):
 
 
 if __name__ == '__main__':
-    a = {"a": 3, "b": 2}
+    a = {"a": 320, "b": 2}
     print(len(a))
     dao = Dao(data=a, table="data")
     dao.insert()
-    print(dao.cursor.execute(r"SELECT * FROM data WHERE a = 3").rowcount)
-    print(dao.exist('a', 3))
-    print(dao.select('a', 2))
-    dao.close()
+    # print(dao.cursor.execute(r"SELECT * FROM data WHERE a = 3").rowcount)
+    # print(dao.exist('a', 3))
+    # print(dao.select('a', 2))
+    a = {"a": 1220, "b": 2}
+    dao.item['data'] = a
+    dao.insert()
