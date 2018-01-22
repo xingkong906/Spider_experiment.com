@@ -97,13 +97,35 @@ class ProjectPage(object):
         self.project['researchers'] = '\t'.join(temp)
 
     def lab_notes(self):
-        pass
+        selector = self.etree.HTML(self.dow(self.url + "/labnotes"))
+        data = {}
+        for note in selector.xpath('//*[@id="labnotes"]/div/div/div/div/div/a/div[2]'):
+            data.clear()
+            data['title'] = note.xpath('.//div[1]/text()')[0]
+            data['date'] = note.xpath('.//div[2]/text()')[0]
+            data['comment'] = note.xpath('.//ul/li[1]/text()')[0]
+            data['heart'] = note.xpath('.//ul/li[2]/text()')[0]
+            data['view'] = note.xpath('.//ul/li[3]/text()')[0]
+            print(data)
 
     def discussion(self):
-        pass
+        selector = self.etree.HTML(self.dow(self.url + "/discussion"))
+        comments = \
+            json.loads(selector.xpath('//*[@id="discussion"]//div[@class="react-component"]/@data-react-props')[0])[
+                'initialComments']
+        for note in selector.xpath('//div[@class="react-component"]/@data-react-props')[0]:
+            if note['children'] is not []:
+                child = []
+                for cell in note['children']:
+                    child.append(cell['id'])
+                    self.dao.insert(table='lab_notes', data=cell)
+                note['children'] = '\t'.join(child)
+            self.dao.insert(table='lab_notes', data=note)
+            print(data)
 
 
 if __name__ == '__main__':
     url = 'https://experiment.com/projects/sequencing-the-fungi-of-the-ecuadorian-andes'
     item = ProjectPage(4103, url)
-    item.over_view()
+    # item.over_view()
+    item.discussion()
