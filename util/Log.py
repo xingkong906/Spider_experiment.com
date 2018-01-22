@@ -1,6 +1,8 @@
 import logging
-import os
+import os, sys, io
 import logging.config
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 
 class Log:

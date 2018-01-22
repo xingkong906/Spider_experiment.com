@@ -108,6 +108,28 @@ class Dao(object):
             logger.e(e)
         return False
 
+    def uodate(self, key="", value="", **kwargs):
+        for cell in kwargs.keys():
+            self.__setitem__(key=cell, value=kwargs[cell])
+        if self.con is None:
+            self.con = Dao.get_con()
+            self.cursor = self.con.cursor()
+        temp = []
+        for cell in self.item['data'].keys():
+            temp.append('"%s" = "%s"' % (cell, str(self.item['data'][cell])))
+        s = ' ,'.join(temp)
+        sql = 'UPDATE %s SET %s WHERE "%s" = "%s"' % (self.item['table'], s, str(key), str(value))
+        logger.d(sql)
+        try:
+            self.cursor.execute(sql)
+            self.con.commit()
+        except sqlite3.Error as e:
+            logger.e("Update ERROR")
+            logger.e(e)
+            print(e)
+            print(sql)
+        logger.i('Update sucessed')
+
     def to_string(self):
         # 将所有的数据转换为字符串类型
         for x in self.item['data']:
@@ -126,12 +148,11 @@ class Dao(object):
 
 if __name__ == '__main__':
     a = {"a": 320, "b": 2}
-    print(len(a))
     dao = Dao(data=a, table="data")
-    dao.insert()
+    # dao.insert()
     # print(dao.cursor.execute(r"SELECT * FROM data WHERE a = 3").rowcount)
     # print(dao.exist('a', 3))
     # print(dao.select('a', 2))
-    a = {"a": 1220, "b": 2}
+    a = {"b": 211}
     dao.item['data'] = a
-    dao.insert()
+    dao.uodate(key='a', value='1', data=a)

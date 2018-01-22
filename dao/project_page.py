@@ -1,6 +1,6 @@
-import requests
 from util.Downloader import Downloader
 from util.Log import Log
+from util.stringUtil import *
 from dao import Dao
 from lxml import html
 from dao.Dao import Dao
@@ -34,8 +34,67 @@ class ProjectPage(object):
         self.dao.insert_dict_list(table="budget", data=budget)
         backers = json.loads(data[3])['backers']
         self.dao.insert_dict_list(table="backers", data=backers)
+        self.project['backers'] = list_dict_to_string('full_name', backers)
+        researchers = selector.xpath('/html/body/div[2]/header/div[2]/div[1]/a')
+        self.get_researchers(researchers)
         endorsed = selector.xpath('//*[@id="endorsements"]//div[@class="endorsement"]')
-        print(endorsed)
+        self.get_endorsed(endorsed)
+        time_line = selector.xpath('//*[@id="milestones"]/div/div/div[2]/div/div/div/div[2]')
+        self.get_time_line(time_line)
+        self.project['funding_raised'] = to_money(selector.xpath('//*[@id="prj-backers"]/ul/li[3]/span[1]/text()')[0])
+        self.project['average_donation'] = to_money(selector.xpath('//*[@id="prj-backers"]/ul/li[4]/span[1]/text()')[0])
+        self.project['count_backers'] = to_int(selector.xpath('//*[@id="prj-backers"]/ul/li[1]/span[1]/text()')[0])
+        self.project['location'] = selector.xpath('/html/body/div[2]/header/div[2]/div[3]/div[2]/div[1]/text()')[0]
+        self.project['DOI'] = re.sub('DOI: ', '',
+                                     selector.xpath('/html/body/div[2]/header/div[2]/div[3]/div[2]/div[2]/text()')[0])
+        self.project['categoryies'] = list_to_string(
+            selector.xpath('/html/body/div[2]/header/div[2]/div[3]/div[2]/a[contains(@class,"tag category")]/text()'))
+        self.project['count_labNotes'] = to_int(selector.xpath('/html/body/div[2]/nav/div/ul/li[6]/a/text()')[0])
+        self.project['count_disscussion'] = to_int(selector.xpath('/html/body/div[2]/nav/div/ul/li[7]/a/text()')[0])
+        print(self.project)
+        self.dao.uodate(key='id', value=self.id, table="project", data=self.project)
+
+    def get_endorsed(self, node_list):
+        self.dao.item["table"] = "endorsed"
+        data = {}
+        endorsed = []
+        for node in node_list:
+            data.clear()
+            data['quote'] = node.xpath('.//div[@class="quote"]/text()')[0]
+            data['name'] = node.xpath('.//div[@class="name"]/text()')[0]
+            endorsed.append(data['name'])
+            data['professional_title'] = node.xpath('.//div[@class="professional-title"]/text()')[0]
+            try:
+                data['affiliation'] = node.xpath('.//div[@class="affiliation"]/text()')[0]
+            except Exception:
+                data['affiliation'] = ''
+            self.dao.insert(table='endorsed', data=data)
+        # 将数据放入project表
+        self.project['endorsed'] = list_to_string(endorsed)
+
+    def get_time_line(self, node):
+        data = {}
+        temp = []
+        for cell in node:
+            if not cell.xpath('./div'):
+                data.clear()
+                data['description'] = cell.xpath('./h2/text()')[0]
+                data['time'] = cell.xpath('./h4/text()')[0]
+                s = data['time'] + '\t' + data['description']
+                temp.append(s)
+                self.dao.insert(table='timeline', data=data)
+        self.project['timeline'] = '\n'.join(temp)
+
+    def get_researchers(self, node):
+        researchers = {}
+        temp = []
+        for cell in node:
+            researchers.clear()
+            researchers['name'] = cell.text
+            temp.append(cell.text)
+            researchers['url'] = cell.xpath('.//@href')[0]
+            self.dao.insert(table='researchers', data=researchers)
+        self.project['researchers'] = '\t'.join(temp)
 
     def lab_notes(self):
         pass
@@ -46,5 +105,5 @@ class ProjectPage(object):
 
 if __name__ == '__main__':
     url = 'https://experiment.com/projects/sequencing-the-fungi-of-the-ecuadorian-andes'
-    item = ProjectPage(1, url)
+    item = ProjectPage(4103, url)
     item.over_view()

@@ -9,7 +9,13 @@ def to_int(text):
 
 
 def to_money(text):
-    pass
+    text = clean(text)
+    rs = re.sub('[\$,]', "", text)
+    return float(rs)
+
+
+def list_to_string(list=[]):
+    return '\t'.join(list)
 
 
 def dict_to_string(tag, dict={}):
@@ -33,3 +39,4 @@ def clean(text):
 
 if __name__ == '__main__':
     clean("Exploring water data\n                with high school students in Flint, MI")
+    print(to_money('$4,865'))
