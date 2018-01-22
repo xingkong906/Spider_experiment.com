@@ -46,18 +46,18 @@ class Dao(object):
         try:
             self.con.pi
         except Exception as e:
-            logger.e("数据库连接出现问题，正在重新创建连接")
+            logger.e("There is a error in connecting database,we are fixing!")
             self.con = self.get_con()
             self.cursor = self.con.cursor()
 
     def insert(self, **kwargs):
+        for key in kwargs.keys():
+            self.__setitem__(key=key, value=kwargs[key])
         if self.con is None:
             self.con = Dao.get_con()
             self.cursor = self.con.cursor()
-        if 'id' in self.item.keys():
+        if 'id' in self.item.keys() and self.item['table'] != 'project':
             self.item['data']['project_id'] = self.item['id']
-        for key in kwargs.keys():
-            self.__setitem__(key=key, value=kwargs[key])
         col = " ,".join(self.item['data'].keys())
         row = ",".join(len(self.item['data']) * "?")
         sql = "INSERT INTO %s (%s) VALUES (%s)" % (self.item['table'], col, row)
@@ -65,18 +65,16 @@ class Dao(object):
         try:
             self.cursor.execute(sql, list(self.item['data'].values()))
             self.con.commit()
-            print("插入完成")
         except sqlite3.Error as e:
-            print("已存在，不可插入")
+            print("existed,can't insert")
             logger.e(e)
-        logger.i("执行插入成功")
+        logger.i("Inserting success")
 
     def insert_dict_list(self, **kwargs):
         # 遍历列表中的元素进行插入，每一个元素为一个字典json字符串
         if "table" in kwargs.keys():
             self.item['table'] = kwargs['table']
         for cell in kwargs['data']:
-            print(cell)
             self.item['data'] = cell
             self.insert()
 
@@ -92,7 +90,7 @@ class Dao(object):
             return self.cursor.fetchall()
         except sqlite3.Error as e:
             logger.e(e)
-        logger.i("执行查询成功")
+        logger.i("select success")
 
     def exist(self, key, data):
         if self.con is None:
@@ -121,7 +119,7 @@ class Dao(object):
             self.con.commit()
             self.cursor.close()
             self.con.close()
-            logger.i("数据库已关闭")
+            logger.i("database was closed")
         except Exception as e:
             logger.e(e)
 
