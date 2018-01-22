@@ -26,7 +26,7 @@ def list_dict_to_string(tag, list=[]):
     rs = []
     for cell in list:
         if type(cell) == type({}):
-            list.append(str(cell[tag]).strip())
+            rs.append(str(cell[tag]).strip())
     return '\t'.join(rs)
 
 
