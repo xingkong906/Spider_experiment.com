@@ -50,12 +50,14 @@ class Dao(object):
             self.con = self.get_con()
             self.cursor = self.con.cursor()
 
-    def insert(self):
+    def insert(self, **kwargs):
         if self.con is None:
             self.con = Dao.get_con()
             self.cursor = self.con.cursor()
         if 'id' in self.item.keys():
             self.item['data']['project_id'] = self.item['id']
+        for key in kwargs.keys():
+            self.__setitem__(key=key, value=kwargs[key])
         col = " ,".join(self.item['data'].keys())
         row = ",".join(len(self.item['data']) * "?")
         sql = "INSERT INTO %s (%s) VALUES (%s)" % (self.item['table'], col, row)
