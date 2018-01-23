@@ -22,7 +22,7 @@ class Log:
         self.logger.debug(message)
 
     def e(self, message):
-        self.logger.debug(message)
+        self.logger.error(message)
 
     def set_level(self, level):
         self.logger.setLevel(level)
@@ -32,7 +32,7 @@ class Log:
                             format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                             datefmt='%a, %d %b %Y %H:%M:%S',
                             filename="../log/" + str(self.PID) + '.log',
-                            filemode='a')
+                            filemode='w')
         console = logging.StreamHandler()
         console.setLevel(logging.INFO)
         formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
