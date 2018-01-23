@@ -108,7 +108,7 @@ class Dao(object):
             logger.e(e)
         return False
 
-    def uodate(self, key="", value="", **kwargs):
+    def update(self, key="", value="", **kwargs):
         for cell in kwargs.keys():
             self.__setitem__(key=cell, value=kwargs[cell])
         if self.con is None:
