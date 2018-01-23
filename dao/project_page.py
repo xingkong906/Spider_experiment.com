@@ -92,7 +92,7 @@ class ProjectPage(object):
             researchers.clear()
             researchers['name'] = cell.text
             temp.append(cell.text)
-            researchers['url'] = cell.xpath('.//@href')[0]
+            researchers['url'] = 'https://experiment.com' + cell.xpath('.//@href')[0]
             self.dao.insert(table='researchers', data=researchers)
         self.project['researchers'] = '\t'.join(temp)
 
@@ -102,30 +102,39 @@ class ProjectPage(object):
         for note in selector.xpath('//*[@id="labnotes"]/div/div/div/div/div/a/div[2]'):
             data.clear()
             data['title'] = note.xpath('.//div[1]/text()')[0]
+            data['url'] = r"https://experiment.com" + note.xpath('..//@href')[0]
             data['date'] = note.xpath('.//div[2]/text()')[0]
             data['comment'] = note.xpath('.//ul/li[1]/text()')[0]
             data['heart'] = note.xpath('.//ul/li[2]/text()')[0]
             data['view'] = note.xpath('.//ul/li[3]/text()')[0]
-            print(data)
+            self.dao.insert(table='lab_notes', data=data)
 
     def discussion(self):
         selector = self.etree.HTML(self.dow(self.url + "/discussion"))
         comments = \
             json.loads(selector.xpath('//*[@id="discussion"]//div[@class="react-component"]/@data-react-props')[0])[
                 'initialComments']
-        for note in selector.xpath('//div[@class="react-component"]/@data-react-props')[0]:
-            if note['children'] is not []:
-                child = []
-                for cell in note['children']:
-                    child.append(cell['id'])
-                    self.dao.insert(table='lab_notes', data=cell)
-                note['children'] = '\t'.join(child)
-            self.dao.insert(table='lab_notes', data=note)
-            print(data)
+        for note in comments:
+            if note['children']:
+                self.get_children(note)
+            else:
+                note['children'] = ''
+                self.dao.insert(table='discussion', data=note)
+
+    def get_children(self, node={}):
+        # 使用迭代器遍历出所有的discussion
+        for cell in node['children']:
+            node['children'] = cell['id']
+            self.dao.insert(table='discussion', data=node)
+            if cell['children']:
+                self.get_children(cell)
+            else:
+                cell['children'] = ''
+                self.dao.insert(table='discussion', data=cell)
 
 
 if __name__ == '__main__':
     url = 'https://experiment.com/projects/sequencing-the-fungi-of-the-ecuadorian-andes'
     item = ProjectPage(4103, url)
-    # item.over_view()
+    # item.lab_notes()
     item.discussion()
