@@ -61,12 +61,12 @@ class Dao(object):
         col = " ,".join(self.item['data'].keys())
         row = ",".join(len(self.item['data']) * "?")
         sql = "INSERT INTO %s (%s) VALUES (%s)" % (self.item['table'], col, row)
-        logger.d(sql)
         try:
             self.cursor.execute(sql, list(self.item['data'].values()))
             self.con.commit()
         except sqlite3.Error as e:
-            print("existed,can't insert")
+            print("existed,can't insert" + self.item['table'])
+            logger.e(self.item['data'])
             logger.e(e)
         logger.i("Inserting success")
 
