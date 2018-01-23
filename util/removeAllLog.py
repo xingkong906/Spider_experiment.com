@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 import os
 
 # 清空log文件夹下的所有文件
