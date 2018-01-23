@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 import sqlite3
 from util.Log import Log
 import json
@@ -119,7 +120,6 @@ class Dao(object):
             temp.append('"%s" = "%s"' % (cell, str(self.item['data'][cell])))
         s = ' ,'.join(temp)
         sql = 'UPDATE %s SET %s WHERE "%s" = "%s"' % (self.item['table'], s, str(key), str(value))
-        logger.d(sql)
         try:
             self.cursor.execute(sql)
             self.con.commit()

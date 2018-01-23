@@ -7,7 +7,7 @@ import urllib
 
 
 class Downloader:
-    logger = Log("log", "downloader")
+    logger = Log("downloader")
 
     def __init__(self, delay=5, user_agent=r"Mozilla/4.0 (compatible; MSIE 5.0; Windows NT)",
                  num_retries=1):
@@ -28,7 +28,7 @@ class Downloader:
         return result
 
     def download(self, url, headers, num_retries):
-        self.logger.i("Downloading: "+url)
+        self.logger.i("Downloading: " + url)
         try:
             req = requests.get(url, headers=headers)
             html = req.text

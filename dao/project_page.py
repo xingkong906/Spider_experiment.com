@@ -23,16 +23,34 @@ class ProjectPage(object):
         self.dao = Dao()
         self.dao.item['id'] = id
 
+    def run(self):
+        try:
+            self.over_view()
+            self.discussion()
+            self.lab_notes()
+            print(self.project)
+            self.update_status()
+        except Exception as e:
+            logger.e(e)
+            logger.e("ERROR IN id=%s\turl=%s" % (str(self.id), self.url))
+
     def over_view(self):
         selector = self.selector
         if self.html != "":
             selector = self.etree.HTML(self.html)
-
-        self.project['content'] = selector.xpath(r'//*[@id="about"]/div/div/p')[0].text
+        try:
+            self.project['content'] = selector.xpath('//*[@id="about"]/div/div/p')[0].text
+        except Exception:
+            self.project['content'] = selector.xpath('//*[@id="about"]/div/div/text()')[0]
         data = selector.xpath(r'//div[@class="react-component"]/@data-react-props')
-        budget = json.loads(data[2])['items']
+        budget = None
+        backers = None
+        for temp in data:
+            if str(temp)[0:10].__contains__('items'):
+                budget = json.loads(temp)['items']
+            if str(temp)[0:10].__contains__('backers'):
+                backers = json.loads(temp)['backers']
         self.dao.insert_dict_list(table="budget", data=budget)
-        backers = json.loads(data[3])['backers']
         self.dao.insert_dict_list(table="backers", data=backers)
         self.project['backers'] = list_dict_to_string('full_name', backers)
         researchers = selector.xpath('/html/body/div[2]/header/div[2]/div[1]/a')
@@ -46,13 +64,13 @@ class ProjectPage(object):
         self.project['count_backers'] = to_int(selector.xpath('//*[@id="prj-backers"]/ul/li[1]/span[1]/text()')[0])
         self.project['location'] = selector.xpath('/html/body/div[2]/header/div[2]/div[3]/div[2]/div[1]/text()')[0]
         self.project['DOI'] = re.sub('DOI: ', '',
-                                     selector.xpath('/html/body/div[2]/header/div[2]/div[3]/div[2]/div[2]/text()')[0])
+                                     selector.xpath('/html/body/div[2]/header//div[@class="tag doi"]/text()')[0])
         self.project['categoryies'] = list_to_string(
             selector.xpath('/html/body/div[2]/header/div[2]/div[3]/div[2]/a[contains(@class,"tag category")]/text()'))
         self.project['count_labNotes'] = to_int(selector.xpath('/html/body/div[2]/nav/div/ul/li[6]/a/text()')[0])
         self.project['count_disscussion'] = to_int(selector.xpath('/html/body/div[2]/nav/div/ul/li[7]/a/text()')[0])
         print(self.project)
-        self.dao.uodate(key='id', value=self.id, table="project", data=self.project)
+        self.dao.update(key='id', value=self.id, table="project", data=self.project)
 
     def get_endorsed(self, node_list):
         self.dao.item["table"] = "endorsed"
@@ -132,9 +150,13 @@ class ProjectPage(object):
                 cell['children'] = ''
                 self.dao.insert(table='discussion', data=cell)
 
+    def update_status(self):
+        # 更新处理状态为完成
+        self.dao.update(table='project', data={'process_status': "true"})
+
 
 if __name__ == '__main__':
-    url = 'https://experiment.com/projects/sequencing-the-fungi-of-the-ecuadorian-andes'
+    url = 'https://experiment.com/projects/genetic-circuits-for-interactive-learning'
     item = ProjectPage(4103, url)
     # item.lab_notes()
-    item.discussion()
+    item.run()

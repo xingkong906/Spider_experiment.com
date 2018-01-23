@@ -1,6 +1,5 @@
 import json
 import requests
-from bs4 import BeautifulSoup
 from util.stringUtil import *
 from dao.Dao import Dao
 from lxml import html
@@ -63,8 +62,12 @@ def get(text):
             rs['institution'] = cell.xpath('.//div[@class="institution"]/a/text()')[0]
             rs['url_institution'] = cell.xpath('.//div[3]/div[1]/div/span[1]/a/@href')[0]
         except Exception:
-            rs['institution'] = cell.xpath('.//div[@class="institution"]/text()')[0]
-            rs['url_institution'] = ""
+            try:
+                rs['institution'] = cell.xpath('.//div[@class="institution"]/text()')[0]
+                rs['url_institution'] = ""
+            except Exception:
+                rs['institution'] = ""
+                rs['url_institution'] = ""
         rs['url_researcher'] = cell.xpath('.//div[3]/div[1]/div/span[1]/a/@href')[0]
         researcher['name'] = rs['researcher']
         researcher['url'] = rs['url_researcher']
@@ -79,7 +82,8 @@ def get(text):
 def do(start, end):
     times = time.time()
     for i in range(start, end + 1):
-        req = requests.get(url, params={'offset': i, 'order': 'founded'})
+        print(i)
+        req = requests.get(url, params={'offset': i * 6, 'order': 'founded'})
         html = json.loads(req.text)['cards']
         get(html)
     print("完成%d" % time.time() - times)
@@ -87,9 +91,9 @@ def do(start, end):
 
 if __name__ == '__main__':
     # html = open('../data/project.html', 'r').read()
-    # url = r'https://experiment.com/discover/more'
-    # req = requests.get(url, params={'offset': '762', 'order': 'founded'})
-    # html = json.loads(req.text)['cards']
-    # print(html)
+    url = r'https://experiment.com/discover/more'
+    req = requests.get(url, params={'offset': 13 * 6, 'order': 'founded'})
+    html = json.loads(req.text)['cards']
+    print(html)
     # get(html)
     do(1, 128)

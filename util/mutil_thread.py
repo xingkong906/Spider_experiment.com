@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 import threading
 from time import ctime, time
 from dao.Projects import *
