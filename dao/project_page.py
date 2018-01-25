@@ -1,5 +1,5 @@
 from util.Downloader import Downloader
-from util.Log import Log
+from util.log2 import logger
 from util.stringUtil import *
 from dao import Dao
 from lxml import html
@@ -7,7 +7,7 @@ from dao.Dao import Dao
 import json
 import re
 
-logger = Log(__name__)
+logger = logger(__name__)
 
 
 class ProjectPage(object):
@@ -31,8 +31,8 @@ class ProjectPage(object):
             print(self.project)
             self.update_status()
         except Exception as e:
-            logger.e(e)
-            logger.e("ERROR IN id=%s\turl=%s" % (str(self.id), self.url))
+            logger.error(e)
+            logger.error("ERROR IN id=%s\turl=%s" % (str(self.id), self.url))
 
     def over_view(self):
         selector = self.selector
@@ -51,7 +51,8 @@ class ProjectPage(object):
             if str(temp)[0:10].__contains__('backers'):
                 backers = json.loads(temp)['backers']
         self.dao.insert_dict_list(table="budget", data=budget)
-        self.dao.insert_dict_list(table="backers", data=backers)
+        # self.dao.insert_dict_list(table="backers", data=backers)
+        self.get_backers(data=backers)
         self.project['backers'] = list_dict_to_string('full_name', backers)
         researchers = selector.xpath('/html/body/div[2]/header/div[2]/div[1]/a')
         self.get_researchers(researchers)
@@ -110,9 +111,18 @@ class ProjectPage(object):
             researchers.clear()
             researchers['name'] = cell.text
             temp.append(cell.text)
+            researchers['project_id'] = self.id
             researchers['url'] = 'https://experiment.com' + cell.xpath('.//@href')[0]
-            self.dao.insert(table='researchers', data=researchers)
+            self.dao.insert_update(select="project_id", key='name', value=researchers['name'], table='researchers',
+                                   data=researchers)
         self.project['researchers'] = '\t'.join(temp)
+
+    def get_backers(self, **kwargs):
+        # 遍历列表中的元素进行插入，每一个元素为一个字典json字符串
+        for cell in kwargs['data']:
+            cell['project_id'] = self.id
+            self.dao.insert_update(select="project_id", key='username', value=cell['username'], table='backers',
+                                   data=cell)
 
     def lab_notes(self):
         selector = self.etree.HTML(self.dow(self.url + "/labnotes"))
@@ -125,6 +135,7 @@ class ProjectPage(object):
             data['comment'] = note.xpath('.//ul/li[1]/text()')[0]
             data['heart'] = note.xpath('.//ul/li[2]/text()')[0]
             data['view'] = note.xpath('.//ul/li[3]/text()')[0]
+            data['project_id'] = self.id
             self.dao.insert(table='lab_notes', data=data)
 
     def discussion(self):
@@ -137,17 +148,20 @@ class ProjectPage(object):
                 self.get_children(note)
             else:
                 note['children'] = ''
+                note['project_id'] = self.id
                 self.dao.insert(table='discussion', data=note)
 
     def get_children(self, node={}):
         # 使用迭代器遍历出所有的discussion
         for cell in node['children']:
             node['children'] = cell['id']
+            node['project_id'] = self.id
             self.dao.insert(table='discussion', data=node)
             if cell['children']:
                 self.get_children(cell)
             else:
                 cell['children'] = ''
+                cell['project_id'] = self.id
                 self.dao.insert(table='discussion', data=cell)
 
     def update_status(self):
@@ -156,7 +170,7 @@ class ProjectPage(object):
 
 
 if __name__ == '__main__':
-    url = 'https://experiment.com/projects/genetic-circuits-for-interactive-learning'
-    item = ProjectPage(4103, url)
+    url = 'https://experiment.com/projects/parabolic-solar-trough'
+    item = ProjectPage(50, url)
     # item.lab_notes()
     item.run()
