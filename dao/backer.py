@@ -1,11 +1,11 @@
 # -*- coding:utf8 -*-
-from util.Log import *
+from util.log2 import logger
 from util.Downloader import Downloader
 from util.stringUtil import *
 from dao.Dao import Dao
 from lxml import html
 
-logger = Log(__name__)
+logger = logger(__name__)
 
 
 class Backer(object):
