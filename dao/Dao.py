@@ -1,9 +1,9 @@
 # -*- coding:utf8 -*-
 import sqlite3
-from util.Log import Log
-import json
+from util.log2 import logger
+from util.stringUtil import *
 
-logger = Log(__name__)
+logger = logger(__name__)
 
 
 class Dao(object):
@@ -45,9 +45,9 @@ class Dao(object):
 
     def open_data_base(self):
         try:
-            self.con.pi
+            self.con
         except Exception as e:
-            logger.e("There is a error in connecting database,we are fixing!")
+            logger.error("There is a error in connecting database,we are fixing!")
             self.con = self.get_con()
             self.cursor = self.con.cursor()
 
@@ -57,7 +57,7 @@ class Dao(object):
         if self.con is None:
             self.con = Dao.get_con()
             self.cursor = self.con.cursor()
-        if 'id' in self.item.keys() and self.item['table'] != 'project':
+        if 'id' in self.item.keys() and self.item['table'] != 'project' and 'project_id' not in kwargs.keys():
             self.item['data']['project_id'] = self.item['id']
         col = " ,".join(self.item['data'].keys())
         row = ",".join(len(self.item['data']) * "?")
@@ -66,18 +66,41 @@ class Dao(object):
             self.cursor.execute(sql, list(self.item['data'].values()))
             self.con.commit()
         except sqlite3.Error as e:
-            print("existed,can't insert" + self.item['table'])
-            logger.e(self.item['data'])
-            logger.e(e)
-        logger.i("Inserting success")
+            if 'UNIQUE constraint' in e:
+                print("existed,can't insert " + self.item['table'])
+            logger.error(self.item['data'])
+            logger.error(e)
+        logger.info("Inserting success")
 
     def insert_dict_list(self, **kwargs):
         # 遍历列表中的元素进行插入，每一个元素为一个字典json字符串
+        if kwargs['data'] is None:
+            return
         if "table" in kwargs.keys():
             self.item['table'] = kwargs['table']
         for cell in kwargs['data']:
             self.item['data'] = cell
             self.insert()
+
+    def insert_update(self, select, key="", value="", **kwargs):
+        if self.con is None:
+            self.con = Dao.get_con()
+            self.cursor = self.con.cursor()
+        sql = "SELECT %s FROM %s WHERE %s='%s'" % (select, kwargs['table'], key, value)
+        try:
+            rs = self.cursor.execute(sql).fetchall()
+            if rs:
+                data = str(rs[0][0]).split('\t')
+                if str(kwargs['data'][select]) not in rs[0][0]:
+                    data.append(sql_str(kwargs['data'][select]))
+                s = kwargs.copy()
+                s['data'][select] = '\t'.join(data)
+                self.update(key=key, value=value, table=s['table'], data=s['data'])
+            else:
+                self.insert(table=kwargs['table'], data=kwargs['data'])
+        except sqlite3.Error as e:
+            logger.error("insert_update EROOR " + kwargs)
+            logger.error(e)
 
     def select(self, key, data):
         if self.con is None:
@@ -90,8 +113,8 @@ class Dao(object):
             self.con.commit()
             return self.cursor.fetchall()
         except sqlite3.Error as e:
-            logger.e(e)
-        logger.i("select success")
+            logger.error(e)
+        logger.info("select success")
 
     def exist(self, key, data):
         if self.con is None:
@@ -99,14 +122,13 @@ class Dao(object):
             self.cursor = self.con.cursor()
         data = str(data)
         sql = "SELECT * FROM %s WHERE %s = '%s'" % (self.item['table'], key, data)
-        print(sql)
         try:
             rs = self.cursor.execute(sql)
             print(self.cursor.rowcount)
             if rs.rowcount > 1:
                 return True
         except sqlite3.Error as e:
-            logger.e(e)
+            logger.error(e)
         return False
 
     def update(self, key="", value="", **kwargs):
@@ -117,18 +139,16 @@ class Dao(object):
             self.cursor = self.con.cursor()
         temp = []
         for cell in self.item['data'].keys():
-            temp.append('"%s" = "%s"' % (cell, str(self.item['data'][cell])))
+            temp.append('"%s" = "%s"' % (cell, sql_str(self.item['data'][cell])))
         s = ' ,'.join(temp)
         sql = 'UPDATE %s SET %s WHERE "%s" = "%s"' % (self.item['table'], s, str(key), str(value))
         try:
             self.cursor.execute(sql)
             self.con.commit()
         except sqlite3.Error as e:
-            logger.e("Update ERROR")
-            logger.e(e)
-            print(e)
-            print(sql)
-        logger.i('Update sucessed')
+            logger.error("Update ERROR:" + e)
+            logger.error(self.item['data'])
+        logger.info('Update sucessed')
 
     def to_string(self):
         # 将所有的数据转换为字符串类型
@@ -141,9 +161,9 @@ class Dao(object):
             self.con.commit()
             self.cursor.close()
             self.con.close()
-            logger.i("database was closed")
+            logger.info("database was closed")
         except Exception as e:
-            logger.e(e)
+            logger.error(e)
 
 
 if __name__ == '__main__':
@@ -153,6 +173,5 @@ if __name__ == '__main__':
     # print(dao.cursor.execute(r"SELECT * FROM data WHERE a = 3").rowcount)
     # print(dao.exist('a', 3))
     # print(dao.select('a', 2))
-    a = {"b": 211}
-    dao.item['data'] = a
-    dao.uodate(key='a', value='1', data=a)
+    a = {'project_id': 11}
+    dao.insert_update(select="project_id", key='id', value=1, table='backers', data=a)
