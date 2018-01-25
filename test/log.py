@@ -1,4 +1,6 @@
-from util.Log import Log
+from util.log2 import logger
 
-logger = Log(__name__)
-logger.i("start")
+print(__name__)
+logger = logger(__name__)
+
+logger.info("start")
