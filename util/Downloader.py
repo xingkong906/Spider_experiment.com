@@ -1,9 +1,7 @@
 from requests import exceptions as reqException
 import requests
-import random
 from util.Throttle import Throttle
 from util.Log import Log
-import urllib
 
 
 class Downloader:
