@@ -2,17 +2,38 @@
 import re
 
 
+def sql_str(sql):
+    return str(sql).replace('"', '""')
+
+
+def is_num(text):
+    for x in text:
+        if x in range(0, 10):
+            return True
+    return False
+
+
 def to_int(text):
     # 提取字符串中的数字
     text = clean(text)
     rs = re.sub('[\D\s]', "", text)
-    return int(rs)
+    try:
+        rs = int(rs)
+    except ValueError:
+        rs = 0
+    finally:
+        return rs
 
 
 def to_money(text):
     text = clean(text)
     rs = re.sub('[\$,]', "", text)
-    return float(rs)
+    try:
+        rs = float(rs)
+    except ValueError:
+        rs = 0
+    finally:
+        return rs
 
 
 def list_to_string(list=[]):
@@ -41,3 +62,4 @@ def clean(text):
 if __name__ == '__main__':
     clean("Exploring water data\n                with high school students in Flint, MI")
     print(to_money('$4,865'))
+    print(to_int(""))

@@ -13,26 +13,42 @@ logger = logger(__name__)
 class ProjectPage(object):
     project = dict()
 
-    def __init__(self, id, url):
+    def __init__(self, id, url, **kwargs):
         self.id = id
         self.url = url
         self.dow = Downloader()
-        self.html = self.dow(url)
+        if 'html' in kwargs.keys():
+            self.html = kwargs['html']
+        else:
+            self.html = self.dow(url)
         self.etree = html.etree
         self.selector = None
         self.dao = Dao()
         self.dao.item['id'] = id
 
     def run(self):
+        # try:
+        logger.error("ERROR IN id=%s\turl=%s" % (str(self.id), self.url))
+        self.over_view()
+        self.discussion()
+        self.lab_notes()
+        print(self.project)
+        self.update_status()
+        # except Exception as e:
+
+    @staticmethod
+    def func(selector, xpath):
+        rs = None
         try:
-            self.over_view()
-            self.discussion()
-            self.lab_notes()
-            print(self.project)
-            self.update_status()
+            rs = selector.xpath(xpath)
+        except IndexError as e:
+            logger.error("可能不存在，请检查\t" + e)
+            rs = ""
         except Exception as e:
             logger.error(e)
-            logger.error("ERROR IN id=%s\turl=%s" % (str(self.id), self.url))
+            rs = ""
+        finally:
+            return rs
 
     def over_view(self):
         selector = self.selector
@@ -41,8 +57,11 @@ class ProjectPage(object):
         try:
             self.project['content'] = selector.xpath('//*[@id="about"]/div/div/p')[0].text
         except Exception:
-            self.project['content'] = selector.xpath('//*[@id="about"]/div/div/text()')[0]
-        data = selector.xpath(r'//div[@class="react-component"]/@data-react-props')
+            try:
+                self.project['content'] = selector.xpath('//*[@id="about"]/div/div/text()')[0]
+            except:
+                self.project['content'] = ""
+        data = self.func(selector, xpath=r'//div[@class="react-component"]/@data-react-props')
         budget = None
         backers = None
         for temp in data:
@@ -54,26 +73,36 @@ class ProjectPage(object):
         # self.dao.insert_dict_list(table="backers", data=backers)
         self.get_backers(data=backers)
         self.project['backers'] = list_dict_to_string('full_name', backers)
-        researchers = selector.xpath('/html/body/div[2]/header/div[2]/div[1]/a')
+        researchers = self.func(selector, xpath='/html/body/div[2]/header/div[2]/div[1]/a')
         self.get_researchers(researchers)
-        endorsed = selector.xpath('//*[@id="endorsements"]//div[@class="endorsement"]')
+        endorsed = self.func(selector, xpath='//*[@id="endorsements"]//div[@class="endorsement"]')
         self.get_endorsed(endorsed)
-        time_line = selector.xpath('//*[@id="milestones"]/div/div/div[2]/div/div/div/div[2]')
+        time_line = self.func(selector, xpath='//*[@id="milestones"]/div/div/div[2]/div/div/div/div[2]')
         self.get_time_line(time_line)
-        self.project['funding_raised'] = to_money(selector.xpath('//*[@id="prj-backers"]/ul/li[3]/span[1]/text()')[0])
-        self.project['average_donation'] = to_money(selector.xpath('//*[@id="prj-backers"]/ul/li[4]/span[1]/text()')[0])
-        self.project['count_backers'] = to_int(selector.xpath('//*[@id="prj-backers"]/ul/li[1]/span[1]/text()')[0])
-        self.project['location'] = selector.xpath('/html/body/div[2]/header/div[2]/div[3]/div[2]/div[1]/text()')[0]
+        self.project['funding_raised'] = to_money(
+            self.func(selector, xpath='//*[@id="prj-backers"]/ul/li[3]/span[1]/text()')[0])
+        self.project['average_donation'] = to_money(
+            self.func(selector, xpath='//*[@id="prj-backers"]/ul/li[4]/span[1]/text()')[0])
+        self.project['count_backers'] = to_int(
+            self.func(selector, xpath='//*[@id="prj-backers"]/ul/li[1]/span[1]/text()')[0])
+        self.project['location'] = \
+            self.func(selector, xpath='/html/body/div[2]/header/div[2]/div[3]/div[2]/div[1]/text()')[0]
         self.project['DOI'] = re.sub('DOI: ', '',
-                                     selector.xpath('/html/body/div[2]/header//div[@class="tag doi"]/text()')[0])
+                                     self.func(selector,
+                                               xpath='/html/body/div[2]/header//div[@class="tag doi"]/text()')[0])
         self.project['categoryies'] = list_to_string(
-            selector.xpath('/html/body/div[2]/header/div[2]/div[3]/div[2]/a[contains(@class,"tag category")]/text()'))
-        self.project['count_labNotes'] = to_int(selector.xpath('/html/body/div[2]/nav/div/ul/li[6]/a/text()')[0])
-        self.project['count_disscussion'] = to_int(selector.xpath('/html/body/div[2]/nav/div/ul/li[7]/a/text()')[0])
+            self.func(selector,
+                      xpath='/html/body/div[2]/header/div[2]/div[3]/div[2]/a[contains(@class,"tag category")]/text()'))
+        self.project['count_labNotes'] = to_int(
+            self.func(selector, xpath='/html/body/div[2]/nav/div/ul/li[6]/a/text()')[0])
+        self.project['count_disscussion'] = to_int(
+            self.func(selector, xpath='/html/body/div[2]/nav/div/ul/li[7]/a/text()')[0])
         print(self.project)
         self.dao.update(key='id', value=self.id, table="project", data=self.project)
 
     def get_endorsed(self, node_list):
+        if not node_list:
+            return
         self.dao.item["table"] = "endorsed"
         data = {}
         endorsed = []
@@ -92,6 +121,8 @@ class ProjectPage(object):
         self.project['endorsed'] = list_to_string(endorsed)
 
     def get_time_line(self, node):
+        if not node:
+            return
         data = {}
         temp = []
         for cell in node:
@@ -105,6 +136,8 @@ class ProjectPage(object):
         self.project['timeline'] = '\n'.join(temp)
 
     def get_researchers(self, node):
+        if not node:
+            return
         researchers = {}
         temp = []
         for cell in node:
@@ -119,6 +152,8 @@ class ProjectPage(object):
 
     def get_backers(self, **kwargs):
         # 遍历列表中的元素进行插入，每一个元素为一个字典json字符串
+        if not kwargs['data']:
+            return
         for cell in kwargs['data']:
             cell['project_id'] = self.id
             self.dao.insert_update(select="project_id", key='username', value=cell['username'], table='backers',
@@ -127,7 +162,10 @@ class ProjectPage(object):
     def lab_notes(self):
         selector = self.etree.HTML(self.dow(self.url + "/labnotes"))
         data = {}
-        for note in selector.xpath('//*[@id="labnotes"]/div/div/div/div/div/a/div[2]'):
+        lab_note = self.func(selector, xpath='//*[@id="labnotes"]/div/div/div/div/div/a/div[2]')
+        if lab_note == '':
+            return
+        for note in lab_note:
             data.clear()
             data['title'] = note.xpath('.//div[1]/text()')[0]
             data['url'] = r"https://experiment.com" + note.xpath('..//@href')[0]
@@ -140,8 +178,11 @@ class ProjectPage(object):
 
     def discussion(self):
         selector = self.etree.HTML(self.dow(self.url + "/discussion"))
+        root = self.func(selector, xpath='//*[@id="discussion"]//div[@class="react-component"]/@data-react-props')[0]
+        if not root:
+            return
         comments = \
-            json.loads(selector.xpath('//*[@id="discussion"]//div[@class="react-component"]/@data-react-props')[0])[
+            json.loads(root)[
                 'initialComments']
         for note in comments:
             if note['children']:
@@ -171,6 +212,6 @@ class ProjectPage(object):
 
 if __name__ == '__main__':
     url = 'https://experiment.com/projects/parabolic-solar-trough'
-    item = ProjectPage(50, url)
+    item = ProjectPage(58, url)
     # item.lab_notes()
     item.run()

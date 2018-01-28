@@ -63,7 +63,8 @@ class Dao(object):
         row = ",".join(len(self.item['data']) * "?")
         sql = "INSERT INTO %s (%s) VALUES (%s)" % (self.item['table'], col, row)
         try:
-            self.cursor.execute(sql, list(self.item['data'].values()))
+            print(type(self.item['data'].values()))
+            self.cursor.execute(sql, tuple(self.item['data'].values()))
             self.con.commit()
         except sqlite3.Error as e:
             if 'UNIQUE constraint' in e:
@@ -91,7 +92,7 @@ class Dao(object):
             rs = self.cursor.execute(sql).fetchall()
             if rs:
                 data = str(rs[0][0]).split('\t')
-                if str(kwargs['data'][select]) not in rs[0][0]:
+                if str(kwargs['data'][select]) not in str(rs[0][0]):
                     data.append(sql_str(kwargs['data'][select]))
                 s = kwargs.copy()
                 s['data'][select] = '\t'.join(data)
