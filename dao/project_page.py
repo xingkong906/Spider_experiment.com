@@ -28,7 +28,8 @@ class ProjectPage(object):
 
     def run(self):
         # try:
-        logger.error("ERROR IN id=%s\turl=%s" % (str(self.id), self.url))
+        logger.debug("id=%s\turl=%s" % (str(self.id), self.url))
+        print(("id=%s\turl=%s" % (str(self.id), self.url)))
         self.over_view()
         self.discussion()
         self.lab_notes()
@@ -37,7 +38,7 @@ class ProjectPage(object):
         # except Exception as e:
 
     @staticmethod
-    def func(selector, xpath):
+    def func(selector, xpath, order=-1):
         rs = None
         try:
             rs = selector.xpath(xpath)
@@ -48,19 +49,30 @@ class ProjectPage(object):
             logger.error(e)
             rs = ""
         finally:
-            return rs
+            if rs and order >= 0:
+                return rs[order]
+            else:
+                if not rs:
+                    return ''
+                return rs
 
     def over_view(self):
         selector = self.selector
         if self.html != "":
             selector = self.etree.HTML(self.html)
         try:
-            self.project['content'] = selector.xpath('//*[@id="about"]/div/div/p')[0].text
-        except Exception:
-            try:
-                self.project['content'] = selector.xpath('//*[@id="about"]/div/div/text()')[0]
-            except:
-                self.project['content'] = ""
+            # 以p标记段落
+            ps = selector.xpath('//*[@id="about"]/div/div/p')
+            if ps:
+                rs = ''
+                for cell in ps:
+                    rs += sql_str(cell.text)
+                self.project['content'] = rs
+            else:
+                self.project['content'] = sql_str(selector.xpath('//*[@id="about"]/div/div/text()')[0])
+        except Exception as e:
+            print(e)
+            self.project['content'] = ''
         data = self.func(selector, xpath=r'//div[@class="react-component"]/@data-react-props')
         budget = None
         backers = None
@@ -80,24 +92,24 @@ class ProjectPage(object):
         time_line = self.func(selector, xpath='//*[@id="milestones"]/div/div/div[2]/div/div/div/div[2]')
         self.get_time_line(time_line)
         self.project['funding_raised'] = to_money(
-            self.func(selector, xpath='//*[@id="prj-backers"]/ul/li[3]/span[1]/text()')[0])
+            self.func(selector, xpath='//*[@id="prj-backers"]/ul/li[3]/span[1]/text()', order=0))
         self.project['average_donation'] = to_money(
-            self.func(selector, xpath='//*[@id="prj-backers"]/ul/li[4]/span[1]/text()')[0])
+            self.func(selector, xpath='//*[@id="prj-backers"]/ul/li[4]/span[1]/text()', order=0))
         self.project['count_backers'] = to_int(
-            self.func(selector, xpath='//*[@id="prj-backers"]/ul/li[1]/span[1]/text()')[0])
-        self.project['location'] = \
-            self.func(selector, xpath='/html/body/div[2]/header/div[2]/div[3]/div[2]/div[1]/text()')[0]
+            self.func(selector, xpath='//*[@id="prj-backers"]/ul/li[1]/span[1]/text()', order=0))
+        self.project['location'] = sql_str(
+            self.func(selector, xpath='.//div[@class="tags"]/div[1]/text()', order=0))
         self.project['DOI'] = re.sub('DOI: ', '',
                                      self.func(selector,
-                                               xpath='/html/body/div[2]/header//div[@class="tag doi"]/text()')[0])
+                                               xpath='.//div[@class="tags"]/div[@class="tag doi"]/text()', order=0))
+        '/html/body/div[2]/header/div[2]/div[3]/div[2]/a[2]'
         self.project['categoryies'] = list_to_string(
             self.func(selector,
-                      xpath='/html/body/div[2]/header/div[2]/div[3]/div[2]/a[contains(@class,"tag category")]/text()'))
+                      xpath='.//div[@class="tags"]/a[contains(@class,"tag category")]/text()'))
         self.project['count_labNotes'] = to_int(
-            self.func(selector, xpath='/html/body/div[2]/nav/div/ul/li[6]/a/text()')[0])
+            self.func(selector, xpath='/html/body/div[2]/nav/div/ul/li[6]/a/text()', order=0))
         self.project['count_disscussion'] = to_int(
-            self.func(selector, xpath='/html/body/div[2]/nav/div/ul/li[7]/a/text()')[0])
-        print(self.project)
+            self.func(selector, xpath='/html/body/div[2]/nav/div/ul/li[7]/a/text()', order=0))
         self.dao.update(key='id', value=self.id, table="project", data=self.project)
 
     def get_endorsed(self, node_list):
@@ -108,14 +120,13 @@ class ProjectPage(object):
         endorsed = []
         for node in node_list:
             data.clear()
-            data['quote'] = node.xpath('.//div[@class="quote"]/text()')[0]
-            data['name'] = node.xpath('.//div[@class="name"]/text()')[0]
+            data['quote'] = sql_str(self.func(selector=node, xpath='.//div[@class="quote"]/text()', order=0))
+            data['name'] = sql_str(self.func(selector=node, xpath='.//div[@class="name"]/text()', order=0))
             endorsed.append(data['name'])
-            data['professional_title'] = node.xpath('.//div[@class="professional-title"]/text()')[0]
-            try:
-                data['affiliation'] = node.xpath('.//div[@class="affiliation"]/text()')[0]
-            except Exception:
-                data['affiliation'] = ''
+            data['professional_title'] = sql_str(
+                self.func(selector=node, xpath='.//div[@class="professional-title"]/text()',
+                          order=0))
+            data['affiliation'] = self.func(selector=node, xpath='.//div[@class="affiliation"]/text()', order=0)
             self.dao.insert(table='endorsed', data=data)
         # 将数据放入project表
         self.project['endorsed'] = list_to_string(endorsed)
@@ -126,10 +137,10 @@ class ProjectPage(object):
         data = {}
         temp = []
         for cell in node:
-            if not cell.xpath('./div'):
+            if not self.func(cell, xpath='./div'):
                 data.clear()
-                data['description'] = cell.xpath('./h2/text()')[0]
-                data['time'] = cell.xpath('./h4/text()')[0]
+                data['description'] = self.func(cell, xpath='./h2/text()', order=0)
+                data['time'] = self.func(cell, xpath='./h4/text()', order=0)
                 s = data['time'] + '\t' + data['description']
                 temp.append(s)
                 self.dao.insert(table='timeline', data=data)
@@ -142,10 +153,10 @@ class ProjectPage(object):
         temp = []
         for cell in node:
             researchers.clear()
-            researchers['name'] = cell.text
-            temp.append(cell.text)
+            researchers['name'] = sql_str(cell.text)
+            temp.append(sql_str(cell.text))
             researchers['project_id'] = self.id
-            researchers['url'] = 'https://experiment.com' + cell.xpath('.//@href')[0]
+            researchers['url'] = 'https://experiment.com' + self.func(cell, xpath='.//@href', order=0)
             self.dao.insert_update(select="project_id", key='name', value=researchers['name'], table='researchers',
                                    data=researchers)
         self.project['researchers'] = '\t'.join(temp)
@@ -167,18 +178,19 @@ class ProjectPage(object):
             return
         for note in lab_note:
             data.clear()
-            data['title'] = note.xpath('.//div[1]/text()')[0]
-            data['url'] = r"https://experiment.com" + note.xpath('..//@href')[0]
-            data['date'] = note.xpath('.//div[2]/text()')[0]
-            data['comment'] = note.xpath('.//ul/li[1]/text()')[0]
-            data['heart'] = note.xpath('.//ul/li[2]/text()')[0]
-            data['view'] = note.xpath('.//ul/li[3]/text()')[0]
+            data['title'] = sql_str(self.func(note, xpath='.//div[1]/text()', order=0))
+            data['url'] = r"https://experiment.com" + self.func(note, xpath='..//@href', order=0)
+            data['date'] = sql_str(self.func(note, xpath='.//div[2]/text()', order=0))
+            data['comment'] = sql_str(self.func(note, xpath='.//ul/li[1]/text()', order=0))
+            data['heart'] = sql_str(self.func(note, xpath='.//ul/li[2]/text()', order=0))
+            data['view'] = sql_str(self.func(note, xpath='.//ul/li[3]/text()', order=0))
             data['project_id'] = self.id
             self.dao.insert(table='lab_notes', data=data)
 
     def discussion(self):
         selector = self.etree.HTML(self.dow(self.url + "/discussion"))
-        root = self.func(selector, xpath='//*[@id="discussion"]//div[@class="react-component"]/@data-react-props')[0]
+        root = self.func(selector, xpath='//*[@id="discussion"]//div[@class="react-component"]/@data-react-props',
+                         order=0)
         if not root:
             return
         comments = \
@@ -207,11 +219,12 @@ class ProjectPage(object):
 
     def update_status(self):
         # 更新处理状态为完成
-        self.dao.update(table='project', data={'process_status': "true"})
+        self.dao.update(key="id", value=self.id, table='project', data={'process_status': "true"})
 
 
 if __name__ == '__main__':
-    url = 'https://experiment.com/projects/parabolic-solar-trough'
-    item = ProjectPage(58, url)
+    root = 'https://experiment.com'
+    url = '/projects/cannibalism-in-giant-tyrannosaurs'
+    item = ProjectPage(22, root + url)
     # item.lab_notes()
     item.run()
