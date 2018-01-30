@@ -3,7 +3,7 @@ import re
 
 
 def sql_str(sql):
-    return str(sql).replace('"', '""')
+    return str(sql).replace('"', '""').replace("'", "''")
 
 
 def is_num(text):
