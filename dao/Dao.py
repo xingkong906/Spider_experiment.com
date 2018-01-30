@@ -63,15 +63,12 @@ class Dao(object):
         row = ",".join(len(self.item['data']) * "?")
         sql = "INSERT INTO %s (%s) VALUES (%s)" % (self.item['table'], col, row)
         try:
-            print(type(self.item['data'].values()))
             self.cursor.execute(sql, tuple(self.item['data'].values()))
             self.con.commit()
+            # logger.info("Inserting success")
         except sqlite3.Error as e:
-            if 'UNIQUE constraint' in e:
-                print("existed,can't insert " + self.item['table'])
-            logger.error(self.item['data'])
-            logger.error(e)
-        logger.info("Inserting success")
+            if 'UNIQUE constraint' in str(e):
+                logger.info("existed,can't insert " + self.item['table'] + "\t" + str(self.item['data']))
 
     def insert_dict_list(self, **kwargs):
         # 遍历列表中的元素进行插入，每一个元素为一个字典json字符串
@@ -100,7 +97,7 @@ class Dao(object):
             else:
                 self.insert(table=kwargs['table'], data=kwargs['data'])
         except sqlite3.Error as e:
-            logger.error("insert_update EROOR " + kwargs)
+            logger.error("insert_update EROOR " + str(kwargs))
             logger.error(e)
 
     def select(self, key, data):
@@ -112,10 +109,10 @@ class Dao(object):
         try:
             rs = self.cursor.execute(sql, data)
             self.con.commit()
+            # logger.info("select success")
             return self.cursor.fetchall()
         except sqlite3.Error as e:
             logger.error(e)
-        logger.info("select success")
 
     def exist(self, key, data):
         if self.con is None:
@@ -146,10 +143,10 @@ class Dao(object):
         try:
             self.cursor.execute(sql)
             self.con.commit()
+            # logger.info('Update successed')
         except sqlite3.Error as e:
             logger.error("Update ERROR:" + e)
-            logger.error(self.item['data'])
-        logger.info('Update sucessed')
+            logger.error((self.item['data']))
 
     def to_string(self):
         # 将所有的数据转换为字符串类型
